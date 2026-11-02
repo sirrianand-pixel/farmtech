@@ -18,21 +18,144 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="FarmTech - Smart Agriculture Assistant for Indian Farmers">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="farmtech">
+  <meta name="apple-mobile-web-app-title" content="FarmTech">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>farmtech</title>
+  <title>FarmTech - Smart Agriculture Assistant</title>
   <link rel="manifest" href="manifest.json">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #092514;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #092514 0%, #114223 50%, #1B5E33 100%);
+      z-index: 999999;
+      transition: opacity 0.4s ease-out;
+    }
+    .logo-container {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 40px rgba(74, 222, 128, 0.4);
+      border: 3.5px solid rgba(134, 239, 172, 0.85);
+      animation: pulse 2s infinite ease-in-out;
+      overflow: hidden;
+    }
+    .logo-img {
+      width: 85%;
+      height: 85%;
+      object-fit: contain;
+    }
+    .app-title {
+      margin-top: 24px;
+      font-size: 34px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 6px 14px;
+      color: #d1fae5;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 32px;
+    }
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 3px solid rgba(134, 239, 172, 0.2);
+      border-top-color: #86efac;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text {
+      margin-top: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+  </style>
 </head>
 <body>
+  <div id="loading-screen">
+    <div class="logo-container">
+      <img src="icons/logo.png" alt="FarmTech" class="logo-img" onerror="this.src='icons/Icon-192.png'"/>
+    </div>
+    <div class="app-title">FarmTech</div>
+    <div class="app-badge">🌱 Smart Agriculture Assistant</div>
+    <div class="spinner"></div>
+    <div class="loading-text">Loading Farm Intelligence...</div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          registrations[i].update();
+        }
+      });
+    }
+
+    // Dismiss loading screen as soon as Flutter renders first frame
+    window.addEventListener('flutter-first-frame', function() {
+      var screen = document.getElementById('loading-screen');
+      if (screen) {
+        screen.style.opacity = '0';
+        setTimeout(function() { if (screen) screen.remove(); }, 400);
+      }
+    });
+
+    // Fallback dismissal in case first-frame event is delayed
+    setTimeout(function() {
+      var screen = document.getElementById('loading-screen');
+      if (screen) {
+        screen.style.opacity = '0';
+        setTimeout(function() { if (screen) screen.remove(); }, 400);
+      }
+    }, 4500);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to validate marketplace item creation
+    function isValidMarketplaceListing(data) {
+      return data.keys().hasAll(['title', 'price', 'phone', 'category'])
+        && data.keys().hasOnly(['title', 'price', 'seller', 'location', 'category', 'phone', 'description', 'createdAt', 'imageBase64'])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+        && data.price is string && data.price.size() > 0 && data.price.size() <= 50
+        && data.phone is string && data.phone.size() >= 8 && data.phone.size() <= 20
+        && data.category is string && data.category in ['Produce', 'Equipment', 'Seeds', 'Fertilizer']
+        && (!('seller' in data) || (data.seller is string && data.seller.size() <= 50))
+        && (!('location' in data) || (data.location is string && data.location.size() <= 100))
+        && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
+        && (!('imageBase64' in data) || (data.imageBase64 is string && data.imageBase64.size() <= 1500000));
+    }
+
+    // 1. Mandi Prices: Public read-only for farmers. Writes restricted to Admin SDK / Service Account.
+    match /mandi_prices/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 2. Marketplace: Public read. Strictly validated creation. Modifying/deleting existing listings is denied to prevent tampering/wiping.
+    match /marketplace/{document} {
+      allow read: if true;
+      allow create: if isValidMarketplaceListing(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // 3. App Updates: Read-only feed for farmers. Writes restricted to Admin SDK.
+    match /app_updates/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 4. App configuration must never distribute API keys to client devices.
+    match /app_config/{document} {
+      allow read, write: if false;
+    }
+
+    // 5. Only staff-administered, source-dated reference data is public.
+    match /agricultural_products/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /agro_stores/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Diagnosis histories and images are private by default and are created only
+    // by a future authenticated/consented backend flow.
+    match /disease_diagnoses/{document} {
+      allow read, write: if false;
+    }
+
+    // 6. Default Deny: All other collections are completely inaccessible.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

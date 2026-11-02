@@ -71,4 +71,5 @@ class DefaultFirebaseOptions {
     authDomain: 'farmtech-4dcb0.firebaseapp.com',
     storageBucket: 'farmtech-4dcb0.firebasestorage.app',
   );
+
 }

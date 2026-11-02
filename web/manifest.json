@@ -1,11 +1,11 @@
 {
-    "name": "farmtech",
-    "short_name": "farmtech",
+    "name": "FarmTech - Smart Agriculture Assistant",
+    "short_name": "FarmTech",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1B5E20",
+    "theme_color": "#2E7D32",
+    "description": "Smart Agriculture Assistant for Indian Farmers - Mandi prices, crop alerts, and plant disease diagnosis.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
