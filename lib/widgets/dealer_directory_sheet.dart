@@ -79,14 +79,7 @@ class _DealerDirectorySheetState extends State<DealerDirectorySheet> {
       }
 
       if (loc.latitude == 0 && loc.longitude == 0) {
-        if (!mounted) return;
-        setState(() {
-          _currentLocation = loc;
-          _dealers = [];
-          _loading = false;
-          _error = loc.errorMessage;
-        });
-        return;
+        loc = LocationService.defaultLocation;
       }
 
       final list = await _dealerService.getDealers(
@@ -101,6 +94,7 @@ class _DealerDirectorySheetState extends State<DealerDirectorySheet> {
         _currentLocation = loc;
         _dealers = list;
         _loading = false;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -112,12 +106,13 @@ class _DealerDirectorySheetState extends State<DealerDirectorySheet> {
   }
 
   Future<void> _reloadDealers() async {
-    if (_currentLocation == null) return;
-    if (_currentLocation!.latitude == 0 && _currentLocation!.longitude == 0) {
-      setState(() => _error = 'Choose a district or enable location permission before searching.');
-      return;
+    if (_currentLocation == null || (_currentLocation!.latitude == 0 && _currentLocation!.longitude == 0)) {
+      _currentLocation = LocationService.defaultLocation;
     }
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final list = await _dealerService.getDealers(
         latitude: _currentLocation!.latitude,

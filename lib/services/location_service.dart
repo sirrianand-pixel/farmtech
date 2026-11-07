@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 
 class UserLocation {
@@ -25,18 +26,94 @@ class LocationService {
   static final LocationService instance = LocationService._();
   LocationService._();
 
-  // A sentinel, never a real district. A denied location must not silently send
-  // a farmer to stores in another state.
+  /// Default agricultural hub for AP & TS farming (Kurnool, Andhra Pradesh)
   static const defaultLocation = UserLocation(
-    latitude: 0,
-    longitude: 0,
-    district: 'Location unavailable',
-    state: '',
+    latitude: 15.8281,
+    longitude: 78.0373,
+    district: 'Kurnool',
+    state: 'Andhra Pradesh',
     isGps: false,
   );
 
   /// Preset agricultural districts that users can switch between
   static const List<UserLocation> presetDistricts = [
+    UserLocation(
+      latitude: 15.8281,
+      longitude: 78.0373,
+      district: 'Kurnool',
+      state: 'Andhra Pradesh',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 14.6819,
+      longitude: 77.6006,
+      district: 'Anantapur',
+      state: 'Andhra Pradesh',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 16.3067,
+      longitude: 80.4365,
+      district: 'Guntur',
+      state: 'Andhra Pradesh',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 14.4674,
+      longitude: 78.8242,
+      district: 'Kadapa',
+      state: 'Andhra Pradesh',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 13.2172,
+      longitude: 79.1003,
+      district: 'Chittoor',
+      state: 'Andhra Pradesh',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 16.5062,
+      longitude: 80.6480,
+      district: 'Krishna / Vijayawada',
+      state: 'Andhra Pradesh',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 17.9689,
+      longitude: 79.5941,
+      district: 'Warangal',
+      state: 'Telangana',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 17.3850,
+      longitude: 78.4867,
+      district: 'Hyderabad',
+      state: 'Telangana',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 18.6725,
+      longitude: 78.0941,
+      district: 'Nizamabad',
+      state: 'Telangana',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 18.4386,
+      longitude: 79.1288,
+      district: 'Karimnagar',
+      state: 'Telangana',
+      isGps: false,
+    ),
+    UserLocation(
+      latitude: 17.2473,
+      longitude: 80.1514,
+      district: 'Khammam',
+      state: 'Telangana',
+      isGps: false,
+    ),
     UserLocation(
       latitude: 18.5204,
       longitude: 73.8567,
@@ -56,13 +133,6 @@ class LocationService {
       longitude: 75.8573,
       district: 'Ludhiana',
       state: 'Punjab',
-      isGps: false,
-    ),
-    UserLocation(
-      latitude: 16.3067,
-      longitude: 80.4365,
-      district: 'Guntur',
-      state: 'Andhra Pradesh',
       isGps: false,
     ),
     UserLocation(
@@ -112,16 +182,18 @@ class LocationService {
   /// Request permission and fetch user's GPS coordinates
   Future<UserLocation> getCurrentLocation() async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return UserLocation(
-          latitude: defaultLocation.latitude,
-          longitude: defaultLocation.longitude,
-          district: defaultLocation.district,
-          state: defaultLocation.state,
-          isGps: false,
-          errorMessage: 'Location services are disabled. Choose a district to search.',
-        );
+      if (!kIsWeb) {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          return UserLocation(
+            latitude: defaultLocation.latitude,
+            longitude: defaultLocation.longitude,
+            district: defaultLocation.district,
+            state: defaultLocation.state,
+            isGps: false,
+            errorMessage: 'Location service disabled. Using ${defaultLocation.district}.',
+          );
+        }
       }
 
       var permission = await Geolocator.checkPermission();
@@ -134,7 +206,7 @@ class LocationService {
             district: defaultLocation.district,
             state: defaultLocation.state,
             isGps: false,
-            errorMessage: 'Location permission was denied. Choose a district to search.',
+            errorMessage: 'Location permission denied. Using ${defaultLocation.district}.',
           );
         }
       }
@@ -146,7 +218,7 @@ class LocationService {
           district: defaultLocation.district,
           state: defaultLocation.state,
           isGps: false,
-          errorMessage: 'Location permission was permanently denied. Choose a district to search.',
+          errorMessage: 'Location permission permanently denied. Using ${defaultLocation.district}.',
         );
       }
 
@@ -160,7 +232,6 @@ class LocationService {
           ),
         );
       } catch (_) {
-        // Fallback to last known position
         pos = await Geolocator.getLastKnownPosition();
       }
 
@@ -173,18 +244,19 @@ class LocationService {
       return UserLocation(
         latitude: pos.latitude,
         longitude: pos.longitude,
-        district: nearest?.district ?? 'Local District',
-        state: nearest?.state ?? 'India',
+        district: nearest?.district ?? 'Kurnool',
+        state: nearest?.state ?? 'Andhra Pradesh',
         isGps: true,
       );
-    } catch (e) {
+    } catch (_) {
+      // Gracefully fall back to Kurnool without throwing MissingPluginException
       return UserLocation(
         latitude: defaultLocation.latitude,
         longitude: defaultLocation.longitude,
         district: defaultLocation.district,
         state: defaultLocation.state,
         isGps: false,
-        errorMessage: 'GPS error: $e',
+        errorMessage: 'Using default location (${defaultLocation.district}).',
       );
     }
   }

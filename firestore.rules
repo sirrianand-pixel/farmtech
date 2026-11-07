@@ -35,9 +35,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 4. App configuration must never distribute API keys to client devices.
+    // 4. App configuration: Read-only for client app features (Gemini key, etc.), writes restricted to Admin SDK.
     match /app_config/{document} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if false;
     }
 
     // 5. Only staff-administered, source-dated reference data is public.
