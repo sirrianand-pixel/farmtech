@@ -601,6 +601,123 @@ class DiseaseService {
     final rawDisease = aiJson['disease']?.toString().toLowerCase() ?? '';
     final rawCrop = aiJson['crop']?.toString().toLowerCase() ?? '';
 
+    // --- Ornamental / Houseplant detection: bypass CIBRC agricultural mapping ---
+    // If the AI correctly identified a non-agricultural plant (money plant, rose, snake plant,
+    // peace lily, cactus, fern, basil, aloe, etc.) — build a generic care model directly
+    // from AI output instead of forcing it into a crop disease template.
+    const houseplantKeywords = [
+      'money plant', 'pothos', 'epipremnum', 'scindapsus',
+      'peace lily', 'spathiphyllum',
+      'snake plant', 'sansevieria', 'dracaena',
+      'aloe', 'succulent', 'cactus',
+      'rose', 'hibiscus', 'jasmine', 'bougainvillea',
+      'fern', 'philodendron', 'monstera', 'anthurium',
+      'rubber plant', 'ficus', 'croton',
+      'spider plant', 'chlorophytum',
+      'basil', 'mint', 'tulsi', 'curry leaf',
+      'ornamental', 'houseplant', 'indoor plant', 'potted',
+    ];
+    final isHouseplant = houseplantKeywords.any(
+      (kw) => rawCrop.contains(kw) || rawDisease.contains(kw),
+    );
+
+    if (isHouseplant) {
+      // Build a DiseaseModel entirely from AI JSON — no CIBRC mapping applied.
+      final rawTreatment = aiJson['treatment'];
+      final List<String> treatmentSteps = rawTreatment is List
+          ? rawTreatment.map((e) => e.toString()).toList()
+          : (rawTreatment != null ? [rawTreatment.toString()] : [
+              'Inspect roots and remove any mushy/black roots.',
+              'Repot in fresh well-draining potting mix if root rot is suspected.',
+              'Adjust watering — allow topsoil to dry between waterings.',
+              'Move to bright indirect light; avoid direct harsh sun.',
+            ]);
+
+      final rawFertilizers = aiJson['fertilizers'];
+      final List<String> fertilizers = rawFertilizers is List
+          ? rawFertilizers.map((e) => e.toString()).toList()
+          : ['Liquid NPK 20:20:20 @ 2g/L foliar spray monthly during growing season.'];
+
+      final rawPrevention = aiJson['prevention']?.toString() ??
+          'Maintain consistent watering schedule. Ensure adequate humidity and indirect bright light.';
+
+      // Build recommended products from AI if present, else generic
+      final rawProds = aiJson['recommended_products'];
+      BrandInfo primaryBrand;
+      List<BrandInfo> alternativeBrands = [];
+      if (rawProds is List && rawProds.isNotEmpty) {
+        final first = rawProds[0] is Map
+            ? (rawProds[0] as Map).cast<String, dynamic>()
+            : <String, dynamic>{};
+        primaryBrand = BrandInfo(
+          name: first['name']?.toString() ?? 'Neem Oil Spray',
+          manufacturer: 'Houseplant Care',
+          formulation: first['usage']?.toString() ?? '5 ml/L spray',
+          notes: first['notes']?.toString() ?? 'Safe for indoor use.',
+        );
+        for (int i = 1; i < rawProds.length && i < 4; i++) {
+          final prod = rawProds[i] is Map
+              ? (rawProds[i] as Map).cast<String, dynamic>()
+              : <String, dynamic>{};
+          alternativeBrands.add(BrandInfo(
+            name: prod['name']?.toString() ?? '',
+            manufacturer: 'General',
+            formulation: prod['usage']?.toString() ?? '',
+            notes: prod['notes']?.toString() ?? '',
+          ));
+        }
+      } else {
+        primaryBrand = const BrandInfo(
+          name: 'Neem Oil Spray (3% Cold-Pressed)',
+          manufacturer: 'Organic Houseplant Care',
+          formulation: '5 ml per Litre of water',
+          notes: 'Safe for all indoor ornamental plants. Spray on leaves and soil surface.',
+          approximatePrice: '₹120 / 250ml',
+        );
+        alternativeBrands = const [
+          BrandInfo(
+            name: 'Hydrogen Peroxide 3% Solution',
+            manufacturer: 'Pharmacy / General Store',
+            formulation: '10 ml per 1 Litre water soil drench',
+            notes: 'Kills root rot pathogens and re-oxygenates roots.',
+          ),
+          BrandInfo(
+            name: 'Copper Fungicide (Ready-to-Use)',
+            manufacturer: 'Houseplant Brand',
+            formulation: 'Dilute as per label — typically 1–2 ml/L',
+            notes: 'For mild fungal leaf spots on ornamental plants.',
+          ),
+        ];
+      }
+
+      return DiseaseModel(
+        id: 'ornamental_${rawCrop.replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z_]'), '')}',
+        name: aiJson['disease']?.toString() ?? 'Plant Health Issue',
+        scientificName: null,
+        crop: aiJson['crop']?.toString() ?? 'Ornamental Plant',
+        symptoms: aiJson['symptoms']?.toString() ??
+            'Visual symptoms as identified by AI Vision analysis.',
+        description: 'Ornamental / houseplant condition identified by AI Vision. '
+            'Not an agricultural field crop — CIBRC guidelines do not apply. '
+            'Follow general plant care practices and consult a horticulturist for confirmation.',
+        activeIngredient: 'Neem Oil / Hydrogen Peroxide 3% (Organic)',
+        dosageInfo: 'Neem Oil: 5 ml/L; H₂O₂: 10 ml/L as soil drench (ornamental care)',
+        cibrcGuidelines: 'CIBRC agricultural registration not applicable for ornamental plants. '
+            'Use general-purpose houseplant safe products only.',
+        icarGuidelines: 'ICAR-NBPGR houseplant care: Ensure proper drainage, '
+            'avoid waterlogging, and maintain moderate indirect light for tropical ornamentals.',
+        waitingPeriod: 'Not applicable (ornamental plant)',
+        primaryBrand: primaryBrand,
+        alternativeBrands: alternativeBrands,
+        treatmentSteps: treatmentSteps,
+        preventionTips: [rawPrevention],
+        fertilizers: fertilizers,
+        severity: aiJson['severity']?.toString() ?? 'Moderate',
+        cause: aiJson['cause']?.toString() ?? 'Fungal',
+        confidence: aiJson['confidence']?.toString() ?? 'High (AI Vision)',
+      );
+    }
+
     // Check if it's healthy
     if (rawDisease.contains('health') || (aiJson['severity']?.toString().toLowerCase() ?? '').contains('health')) {
       return DiseaseModel(
@@ -639,39 +756,58 @@ class DiseaseService {
     }
 
     // Attempt intelligent matching with our certified CIBRC database
+    // Only match if the crop also matches — avoid cross-mapping ornamental symptoms to crop diseases
     for (final model in _repository) {
-      final nameMatches = model.name.toLowerCase().split(' ').any((word) =>
-          word.length > 3 && rawDisease.contains(word));
       final cropMatches = rawCrop.isNotEmpty &&
-          (model.crop.toLowerCase().contains(rawCrop) || rawCrop.contains(model.crop.toLowerCase().split(' ')[0]));
+          (model.crop.toLowerCase().contains(rawCrop.split(' ')[0]) ||
+              rawCrop.contains(model.crop.toLowerCase().split(' ')[0]));
+      if (!cropMatches) continue; // require crop to match first
 
-      if (nameMatches || (cropMatches && rawDisease.contains(model.id.split('_')[1]))) {
+      final nameMatches = model.name.toLowerCase().split(' ').any(
+            (word) => word.length > 3 && rawDisease.contains(word),
+          );
+      if (nameMatches || rawDisease.contains(model.id.split('_').skip(1).join('_'))) {
         return model;
       }
     }
 
-    // Also check direct keyword aliases
-    if (rawDisease.contains('blast')) return findDiseaseById('rice_blast')!;
-    if (rawDisease.contains('early blight') || (rawDisease.contains('blight') && rawCrop.contains('tomato'))) {
-      return findDiseaseById('tomato_early_blight')!;
-    }
-    if (rawDisease.contains('late blight') || rawCrop.contains('potato')) {
-      return findDiseaseById('potato_late_blight')!;
-    }
-    if (rawDisease.contains('tikka') || rawDisease.contains('cercospora') || rawCrop.contains('groundnut')) {
-      return findDiseaseById('groundnut_tikka')!;
-    }
-    if (rawDisease.contains('curl') || rawDisease.contains('whitefly')) {
-      return findDiseaseById('cotton_whitefly_leaf_curl')!;
-    }
-    if (rawDisease.contains('anthracnose') || rawDisease.contains('fruit rot') || rawCrop.contains('chilli')) {
-      return findDiseaseById('chilli_anthracnose')!;
-    }
-    if (rawDisease.contains('armyworm') || rawDisease.contains('borer') || rawCrop.contains('maize') || rawCrop.contains('corn')) {
-      return findDiseaseById('maize_fall_armyworm')!;
-    }
-    if (rawDisease.contains('aphid') || rawDisease.contains('thrip') || rawDisease.contains('jassid') || rawDisease.contains('sucking')) {
-      return findDiseaseById('sucking_pest_aphids')!;
+    // Direct keyword aliases — only triggered when crop also indicates an agricultural plant
+    final isAgriculturalCrop = const [
+      'tomato', 'rice', 'paddy', 'cotton', 'groundnut', 'peanut',
+      'chilli', 'pepper', 'potato', 'maize', 'corn', 'wheat', 'onion',
+      'sugarcane', 'soybean', 'sunflower', 'mango', 'banana', 'grape',
+      'cucumber', 'brinjal', 'eggplant', 'okra', 'ladyfinger',
+    ].any((crop) => rawCrop.contains(crop));
+
+    if (isAgriculturalCrop) {
+      if (rawDisease.contains('blast') && (rawCrop.contains('rice') || rawCrop.contains('paddy'))) {
+        return findDiseaseById('rice_blast')!;
+      }
+      if (rawDisease.contains('early blight') || (rawDisease.contains('blight') && rawCrop.contains('tomato'))) {
+        return findDiseaseById('tomato_early_blight')!;
+      }
+      if (rawDisease.contains('late blight') || rawCrop.contains('potato')) {
+        return findDiseaseById('potato_late_blight')!;
+      }
+      if (rawDisease.contains('tikka') || rawDisease.contains('cercospora') ||
+          rawCrop.contains('groundnut') || rawCrop.contains('peanut')) {
+        return findDiseaseById('groundnut_tikka')!;
+      }
+      if ((rawDisease.contains('curl') || rawDisease.contains('whitefly')) && rawCrop.contains('cotton')) {
+        return findDiseaseById('cotton_whitefly_leaf_curl')!;
+      }
+      if (rawDisease.contains('anthracnose') || rawDisease.contains('fruit rot') ||
+          rawCrop.contains('chilli') || rawCrop.contains('pepper')) {
+        return findDiseaseById('chilli_anthracnose')!;
+      }
+      if (rawDisease.contains('armyworm') || rawDisease.contains('borer') ||
+          rawCrop.contains('maize') || rawCrop.contains('corn')) {
+        return findDiseaseById('maize_fall_armyworm')!;
+      }
+      if (rawDisease.contains('aphid') || rawDisease.contains('thrip') ||
+          rawDisease.contains('jassid') || rawDisease.contains('sucking')) {
+        return findDiseaseById('sucking_pest_aphids')!;
+      }
     }
 
     // Default Fallback: Construct complete DiseaseModel using CIBRC guidelines based on cause type

@@ -285,35 +285,50 @@ class _DiseaseCheckerPageState extends State<DiseaseCheckerPage> {
     ];
 
     const prompt = '''
-You are an expert Indian agricultural plant pathologist and crop doctor. Analyze this plant leaf or crop photo in detail.
-Identify whether the crop is healthy or affected by a fungal, bacterial, viral disease, or insect pest infestation.
-Return strictly a valid JSON object matching this schema:
+You are an expert plant pathologist and botanist. Analyze the uploaded plant photo carefully.
+
+IMPORTANT — Step 1: Identify the EXACT plant species first.
+- Look at leaf shape, texture, color pattern, variegation, stem, and any visible fruit or flower.
+- Common houseplants: Money Plant (Pothos/Epipremnum aureum), Peace Lily, Aloe Vera, Basil, Snake Plant, Rose, etc.
+- Agricultural crops: Tomato, Chilli, Cotton, Groundnut, Rice (Paddy), Maize, Potato, Onion, etc.
+- Do NOT assume the plant is an agricultural crop if it looks like an ornamental or houseplant.
+- If the plant has heart-shaped or waxy leaves with variegation (yellow/white patches), it is likely a Money Plant or Pothos.
+
+Step 2: Identify what problem (if any) the plant has:
+- Yellowing leaves = Overwatering, nutrient deficiency, or root rot
+- Brown leaf tips = Underwatering, low humidity, or fluoride toxicity
+- Black/brown mushy spots = Fungal rot (Pythium, Phytophthora, Botrytis)
+- Wilting = Root rot, underwatering, or bacterial wilt
+- White powdery coating = Powdery mildew (Erysiphe or Oidium species)
+- Small insects = Aphids, spider mites, mealybugs, scale
+
+Return ONLY a valid JSON object (no markdown, no code fences) exactly matching this schema:
 {
-  "disease": "Specific Disease Name (e.g. Tikka Leaf Spot, Rice Blast, Tomato Early Blight, Cotton Leaf Curl) or 'Healthy Plant'",
-  "crop": "Specific Crop Name (e.g. Groundnut, Rice, Tomato, Cotton, Chilli)",
+  "disease": "Exact condition name (e.g. 'Root Rot (Pythium sp.)', 'Overwatering / Yellow Leaf Syndrome', 'Healthy Plant', 'Powdery Mildew', 'Spider Mite Infestation', 'Tomato Early Blight')",
+  "crop": "Exact plant name as identified (e.g. 'Money Plant (Pothos)', 'Tomato', 'Rice', 'Chilli', 'Rose', 'Peace Lily')",
   "confidence": "High (AI Vision)",
-  "cause": "Fungal / Bacterial / Viral / Pest / Nutritional / Healthy",
+  "cause": "Fungal / Bacterial / Viral / Pest / Nutritional / Overwatering / Underwatering / Healthy",
   "severity": "Low / Moderate / Severe / Healthy",
-  "symptoms": "Detailed visual symptoms observed on leaf or fruit",
+  "symptoms": "Detailed description of exact visible symptoms in this photo",
   "treatment": [
-    "Precise chemical or biological spray step with dosage per liter (CIBRC approved)",
-    "Secondary treatment or spray schedule"
+    "Specific actionable treatment step 1 with product name and dosage",
+    "Specific actionable treatment step 2"
   ],
   "fertilizers": [
-    "Specific fertilizer or foliar micronutrient recommendation (e.g. 19:19:19, Potash, Calcium Nitrate)"
+    "Specific fertilizer or nutrient recommendation relevant to this exact plant"
   ],
   "recommended_products": [
     {
-      "name": "Commercial brand or active ingredient (e.g., Mancozeb 75% WP, Tricyclazole 75% WP)",
-      "type": "spray / fertilizer",
-      "usage": "Application rate per liter of water",
-      "notes": "Safety and application timing advice"
+      "name": "Specific product or active ingredient name",
+      "type": "spray / fertilizer / soil-treatment",
+      "usage": "Exact application method and rate",
+      "notes": "Important safety or timing note"
     }
   ],
-  "prevention": "Cultural and preventative field practices",
+  "prevention": "Specific preventive care practices for this exact plant species",
   "needs_clearer_photo": false
 }
-If the photo does not clearly depict a plant, crop leaf, or fruit, set "needs_clearer_photo": true.
+If the image is not a plant or is too blurry to identify, set "needs_clearer_photo": true.
 ''';
 
     final payload = jsonEncode({
